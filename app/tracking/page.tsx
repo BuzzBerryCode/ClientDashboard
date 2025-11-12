@@ -2,15 +2,15 @@
 
 import DashboardLayout from '@/app/components/DashboardLayout'
 
-export default function Dashboard() {
+export default function TrackingPage() {
   return (
     <DashboardLayout>
       <div>
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '8px', margin: 0 }}>
-          Creators
+          Tracking
         </h1>
         <p style={{ fontSize: '14px', color: '#6b7280', margin: 0, marginBottom: '24px' }}>
-          View and analyze performance metrics for your tracked social media creators
+          Track and monitor your social media campaigns and analytics
         </p>
         <div
           style={{
@@ -23,9 +23,10 @@ export default function Dashboard() {
             color: '#9ca3af'
           }}
         >
-          Main content (filters, data table, etc.) will go here.
+          Tracking content will go here.
         </div>
       </div>
     </DashboardLayout>
   )
 }
+

@@ -2,15 +2,15 @@
 
 import DashboardLayout from '@/app/components/DashboardLayout'
 
-export default function Dashboard() {
+export default function VideosPage() {
   return (
     <DashboardLayout>
       <div>
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '8px', margin: 0 }}>
-          Creators
+          Videos
         </h1>
         <p style={{ fontSize: '14px', color: '#6b7280', margin: 0, marginBottom: '24px' }}>
-          View and analyze performance metrics for your tracked social media creators
+          Manage and view your video content library
         </p>
         <div
           style={{
@@ -23,9 +23,10 @@ export default function Dashboard() {
             color: '#9ca3af'
           }}
         >
-          Main content (filters, data table, etc.) will go here.
+          Videos content will go here.
         </div>
       </div>
     </DashboardLayout>
   )
 }
+

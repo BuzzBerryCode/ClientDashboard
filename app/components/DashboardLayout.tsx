@@ -1,7 +1,7 @@
 'use client'
 
 import { supabase } from '@/lib/supabase'
-import { BarChart3, ChevronLeft, ChevronRight, HelpCircle, LogOut, MessageSquare, Users, Video } from 'lucide-react'
+import { BarChart3, ChevronLeft, ChevronRight, HelpCircle, LogOut, MessageSquare, RefreshCw, Users } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { startTransition, useEffect, useState } from 'react'
 
@@ -78,9 +78,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Navigation items
   const navItems = [
-    { path: '/creators', label: 'Creators', icon: Users },
     { path: '/tracking', label: 'Tracking', icon: BarChart3 },
-    { path: '/videos', label: 'Videos', icon: Video },
+    { path: '/creators', label: 'Creators', icon: Users },
   ]
 
   const handleNavigation = (path: string) => {
@@ -218,6 +217,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {navItems.map((item) => {
               const Icon = item.icon
               const active = isActive(item.path)
+              const isTracking = item.path === '/tracking'
               return (
                 <div
                   key={item.path}
@@ -233,7 +233,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     fontSize: '14px',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    justifyContent: sidebarCollapsed ? 'center' : 'flex-start'
+                    justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+                    gap: '8px'
                   }}
                   onMouseEnter={(e) => {
                     if (!active) {
@@ -246,8 +247,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     }
                   }}
                 >
-                  <Icon size={18} style={{ marginRight: sidebarCollapsed ? '0' : '8px' }} />
-                  {!sidebarCollapsed && <span>{item.label}</span>}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                      gap: sidebarCollapsed ? 0 : 8,
+                      flex: 1
+                    }}
+                  >
+                    <Icon size={18} style={{ marginRight: sidebarCollapsed ? '0' : '0' }} />
+                    {!sidebarCollapsed && <span>{item.label}</span>}
+                  </div>
+                  {isTracking && !sidebarCollapsed && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // Notify tracking page to refresh its data
+                        window.dispatchEvent(new CustomEvent('tracking-refresh'))
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'none',
+                        padding: 0,
+                        margin: 0,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 22,
+                        height: 22,
+                        borderRadius: '999px',
+                        color: active ? '#4338ca' : '#9ca3af',
+                        transition: 'background-color 0.15s ease, color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#e5e7eb'
+                        e.currentTarget.style.color = '#111827'
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
+                        e.currentTarget.style.color = active ? '#4338ca' : '#9ca3af'
+                      }}
+                      title="Refresh tracking data"
+                    >
+                      <RefreshCw size={14} />
+                    </button>
+                  )}
                 </div>
               )
             })}

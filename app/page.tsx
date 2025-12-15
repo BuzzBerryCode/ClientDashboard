@@ -1,31 +1,15 @@
 'use client'
 
-import DashboardLayout from '@/app/components/DashboardLayout'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function Dashboard() {
-  return (
-    <DashboardLayout>
-      <div>
-        <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '8px', margin: 0 }}>
-          Creators
-        </h1>
-        <p style={{ fontSize: '14px', color: '#6b7280', margin: 0, marginBottom: '24px' }}>
-          View and analyze performance metrics for your tracked social media creators
-        </p>
-        <div
-          style={{
-            width: '100%',
-            minHeight: '600px',
-            backgroundColor: '#ffffff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            padding: '24px',
-            color: '#9ca3af'
-          }}
-        >
-          Main content (filters, data table, etc.) will go here.
-        </div>
-      </div>
-    </DashboardLayout>
-  )
+  const router = useRouter()
+  
+  useEffect(() => {
+    // Redirect to tracking page as the default page
+    router.replace('/tracking')
+  }, [router])
+
+  return null
 }

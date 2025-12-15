@@ -44,8 +44,8 @@ export default function LoginPage() {
           sessionStorage.setItem('email', data.email)
         }
         
-        // Redirect to home page
-        router.push('/')
+        // Redirect to tracking page (default page after login)
+        router.push('/tracking')
       } else {
         setError('Invalid username or password')
       }

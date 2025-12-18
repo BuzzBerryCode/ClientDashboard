@@ -1,7 +1,7 @@
 'use client'
 
 import { supabase } from '@/lib/supabase'
-import { BarChart3, ChevronLeft, ChevronRight, HelpCircle, LogOut, MessageSquare, RefreshCw, Users } from 'lucide-react'
+import { BarChart3, ChevronLeft, ChevronRight, LogOut, RefreshCw, Users } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { startTransition, useEffect, useState } from 'react'
 
@@ -307,45 +307,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               flexDirection: 'column'
             }}
           >
-            {/* Help Links */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                marginBottom: '16px'
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  color: '#4b5563',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start'
-                }}
-              >
-                <HelpCircle size={18} style={{ marginRight: sidebarCollapsed ? '0' : '8px' }} />
-                {!sidebarCollapsed && <span>Help</span>}
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  color: '#4b5563',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start'
-                }}
-              >
-                <MessageSquare size={18} style={{ marginRight: sidebarCollapsed ? '0' : '8px' }} />
-                {!sidebarCollapsed && <span>Feedback</span>}
-              </div>
-            </div>
-
             {/* User Profile */}
             <div
               style={{

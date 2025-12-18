@@ -4,26 +4,25 @@ import DashboardLayout from '@/app/components/DashboardLayout'
 import { supabase } from '@/lib/supabase'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Activity,
-  BarChart2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  ExternalLink,
-  Eye,
-  Heart,
-  Info,
-  Instagram,
-  LayoutPanelLeft,
-  MapPin,
-  MessageSquare,
-  Music2,
-  RefreshCw,
-  Search,
-  Settings,
-  Users,
-  X
+    Activity,
+    BarChart2,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Download,
+    ExternalLink,
+    Eye,
+    Heart,
+    Info,
+    Instagram,
+    LayoutPanelLeft,
+    MapPin,
+    MessageSquare,
+    Music2,
+    Search,
+    Settings,
+    Users,
+    X
 } from 'lucide-react'
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -141,7 +140,6 @@ type HealthWellnessRow = {
   metrics_history?: CreatorMetricsHistoryRow[] | CreatorMetricsHistoryRow | null
 }
 
-type DateFilter = 'all' | '7d' | '30d' | '90d'
 
 const sanitizeHandle = (value: string | null | undefined): string => {
   if (!value) return ''
@@ -238,7 +236,7 @@ const formatNumber = (value: number | null | undefined): string => {
 
 const formatPercent = (value: number | null | undefined): string => {
   if (value === null || value === undefined || isNaN(value)) return 'N/A'
-  return `${(value * 100).toFixed(1)}%`
+  return `${value.toFixed(1)}%`
 }
 
 const HISTORY_SERIES_CONFIG: Array<{
@@ -582,9 +580,6 @@ export default function CreatorsPage() {
   const [total, setTotal] = useState<number>(0)
   const [searchTerm, setSearchTerm] = useState<string>('')
 
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
-  const [dateOpen, setDateOpen] = useState<boolean>(false)
-
   const [columnsOpen, setColumnsOpen] = useState<boolean>(false)
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null)
   const [selectedActions, setSelectedActions] = useState<Record<string, ActionState>>({})
@@ -600,7 +595,6 @@ export default function CreatorsPage() {
     | 'average_likes'
     | 'engagement_rate'
     | 'location'
-    | 'updated_at'
 
   type SchemaColumn = { key: ColumnKey; label: string; width: string; align?: 'left' | 'right'; icon: LucideIcon }
 
@@ -625,8 +619,7 @@ export default function CreatorsPage() {
       { key: 'average_likes', label: 'Avg Likes', width: '140px', align: 'right', icon: Heart },
       { key: 'average_comments', label: 'Avg Comments', width: '160px', align: 'right', icon: MessageSquare },
       { key: 'engagement_rate', label: 'Engagement', width: '150px', align: 'right', icon: Activity },
-      { key: 'location', label: 'Location', width: '220px', icon: MapPin },
-      { key: 'updated_at', label: 'Last Refresh', width: '160px', icon: RefreshCw }
+      { key: 'location', label: 'Location', width: '220px', icon: MapPin }
     ],
     []
   )
@@ -662,15 +655,6 @@ export default function CreatorsPage() {
     return { from, to: to - 1 }
   }, [page, pageSize])
 
-  const buildDateGte = useCallback((): string | null => {
-    const now = new Date()
-    const d = new Date(now)
-    if (dateFilter === '7d') d.setDate(now.getDate() - 7)
-    else if (dateFilter === '30d') d.setDate(now.getDate() - 30)
-    else if (dateFilter === '90d') d.setDate(now.getDate() - 90)
-    else return null
-    return d.toISOString()
-  }, [dateFilter])
 
   const fetchRows = useCallback(async () => {
     setLoading(true)
@@ -749,10 +733,6 @@ export default function CreatorsPage() {
         query = query.ilike('handle', `%${escapedSearch}%`)
       }
 
-      const dateGte = buildDateGte()
-      if (dateGte) {
-        query = query.gte('updated_at', dateGte)
-      }
       const { data, error, count } = await query.range(fromTo.from, fromTo.to)
       if (error) throw error
       setRows(((data as unknown) as HealthWellnessRow[]) || [])
@@ -763,7 +743,7 @@ export default function CreatorsPage() {
     } finally {
       setLoading(false)
     }
-  }, [fromTo.from, fromTo.to, buildDateGte, searchTerm, userCreatorHandles])
+  }, [fromTo.from, fromTo.to, searchTerm, userCreatorHandles])
 
   const fetchUserActionBuckets = useCallback(
     async (username: string) => {
@@ -1194,7 +1174,6 @@ export default function CreatorsPage() {
     const averageLikesValue = extractAverageLikes(selectedCreator.average_likes)
     const averageSharesValue = extractAverageShares(selectedCreator)
     const recentMedia = extractRecentMedia(selectedCreator)
-    const historicalMetrics = buildHistoricalMetrics(selectedCreator)
 
     const categories = [selectedCreator.primary_niche, selectedCreator.secondary_niche].filter(Boolean) as string[]
     const hashtagsList: string[] = Array.isArray(selectedCreator.hashtags)
@@ -1216,57 +1195,39 @@ export default function CreatorsPage() {
       {
         title: 'Followers',
         value: formatNumber(selectedCreator.followers_count),
-        change: formatChangeLabel(selectedCreator.followers_change, selectedCreator.followers_change_type),
-        changeColor: getChangeColor(selectedCreator.followers_change_type),
         icon: Users
       },
       {
         title: 'Avg. Views',
         value: formatNumber(selectedCreator.average_views),
-        change: formatChangeLabel(selectedCreator.average_views_change, selectedCreator.average_views_change_type),
-        changeColor: getChangeColor(selectedCreator.average_views_change_type),
         icon: Eye
       },
       {
         title: 'Avg. Likes',
         value: averageLikesValue !== null ? formatNumber(averageLikesValue) : 'N/A',
-        change: formatChangeLabel(selectedCreator.average_likes_change, selectedCreator.average_likes_change_type),
-        changeColor: getChangeColor(selectedCreator.average_likes_change_type),
         icon: Heart
       },
       {
         title: 'Avg. Comments',
         value: formatNumber(selectedCreator.average_comments),
-        change: formatChangeLabel(selectedCreator.average_comments_change, selectedCreator.average_comments_change_type),
-        changeColor: getChangeColor(selectedCreator.average_comments_change_type),
         icon: MessageSquare
       },
       {
         title: 'Avg. Engagement',
         value: formatPercent(selectedCreator.engagement_rate),
-        change: formatChangeLabel(
-          selectedCreator.engagement_rate_change,
-          selectedCreator.engagement_rate_change_type,
-          { isPercent: true }
-        ),
-        changeColor: getChangeColor(selectedCreator.engagement_rate_change_type),
         icon: BarChart2
       }
     ]
-
-    const buzzScoreValue = Math.max(0, Math.min(selectedCreator.buzz_score ?? 0, 100))
 
     return {
       averageLikesValue,
       averageSharesValue,
       recentMedia,
-      historicalMetrics,
       categories,
       hashtagsList,
       profileUrl,
       profileButtonLabel,
       metricCards,
-      buzzScoreValue,
       location: selectedCreator.locationRegion || selectedCreator.location || 'N/A',
       bio: selectedCreator.bio || 'No bio available.',
       creator: selectedCreator
@@ -1297,10 +1258,8 @@ export default function CreatorsPage() {
       bio,
       categories,
       hashtagsList,
-      buzzScoreValue,
       recentMedia,
-      metricCards,
-      historicalMetrics
+      metricCards
     } = selectedCreatorData
 
     const cardStyle = {
@@ -1326,90 +1285,6 @@ export default function CreatorsPage() {
       borderRadius: 9999,
       fontSize: 11
     } as const
-
-    const historySeries = historicalMetrics.series
-    const historyLabels = historicalMetrics.labels
-    const historyHasData = historicalMetrics.points.length > 0 && historySeries.length > 0 && historyLabels.length > 1
-    const percentDomain = historicalMetrics.percentDomain
-    const historyRange = percentDomain.max - percentDomain.min || 1
-
-    const buildSeriesPath = (series: HistorySeries) => {
-      if (series.percentChanges.length === 0) return ''
-      let path = ''
-      let segmentOpen = false
-      series.percentChanges.forEach((value, index) => {
-        if (value === null || Number.isNaN(value)) {
-          segmentOpen = false
-          return
-        }
-        const x = historyLabels.length > 1 ? (index / (historyLabels.length - 1)) * 100 : 0
-        const y = 100 - ((value - percentDomain.min) / historyRange) * 100
-        const clampedY = Math.max(0, Math.min(100, y))
-        if (!segmentOpen) {
-          path += `M${x},${clampedY}`
-          segmentOpen = true
-        } else {
-          path += ` L${x},${clampedY}`
-        }
-      })
-      return path
-    }
-
-    const historyPaths = historySeries.map(series => ({
-      key: series.key,
-      color: series.color,
-      path: buildSeriesPath(series)
-    }))
-
-    const historyMarkers = historySeries
-      .map(series => {
-        const reversed = [...series.percentChanges].reverse()
-        const lastIndexFromEnd = reversed.findIndex(value => value !== null && !Number.isNaN(value))
-        if (lastIndexFromEnd === -1) return null
-        const index = series.percentChanges.length - 1 - lastIndexFromEnd
-        const value = series.percentChanges[index]
-        if (value === null || Number.isNaN(value)) return null
-        const x = historyLabels.length > 1 ? (index / (historyLabels.length - 1)) * 100 : 0
-        const y = 100 - ((value - percentDomain.min) / historyRange) * 100
-        const clampedY = Math.max(0, Math.min(100, y))
-        return {
-          key: series.key,
-          x,
-          y: clampedY,
-          color: series.color,
-          valueFormatted: series.valueFormatter(series.values[index] ?? null),
-          percentChange: value
-        }
-      })
-      .filter((marker): marker is { key: HistoryMetricKey; x: number; y: number; color: string; valueFormatted: string; percentChange: number } => !!marker)
-
-    const tickCount = 5
-    const axisTicks = Array.from({ length: tickCount }, (_, tickIndex) =>
-      percentDomain.min + (historyRange / Math.max(1, tickCount - 1)) * tickIndex
-    )
-
-    const historyTicks = axisTicks.map(value => ({
-      value,
-      yPercent: ((percentDomain.max - value) / historyRange) * 100
-    }))
-
-    const zeroLine =
-      percentDomain.min <= 0 && percentDomain.max >= 0
-        ? 100 - ((0 - percentDomain.min) / historyRange) * 100
-        : null
-
-    const formatPercentChangeValue = (value: number | null) => {
-      if (value === null || Number.isNaN(value)) return '—'
-      const percent = value * 100
-      const precision = Math.abs(percent) < 10 ? 1 : 0
-      const formatted = percent.toFixed(precision)
-      const sign = percent > 0 ? '+' : percent < 0 ? '-' : ''
-      return `${sign}${Math.abs(parseFloat(formatted)).toFixed(precision)}%`
-    }
-
-    const lastHistoryPoint = historicalMetrics.points[historicalMetrics.points.length - 1]
-    const historyLastUpdated = lastHistoryPoint?.iso ? timeAgo(lastHistoryPoint.iso) : null
-    const historyGradientId = `history-gradient-${creator.id}`
 
     const displayedHashtags = hashtagsList.slice(0, 6)
 
@@ -1574,41 +1449,14 @@ export default function CreatorsPage() {
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.4 }}>{card.title}</div>
                     </div>
                   <div style={{ fontSize: 18, fontWeight: 600, color: '#111827' }}>{card.value}</div>
-                  <div style={{ fontSize: 11, color: card.changeColor }}>{card.change}</div>
                   </div>
                 )
               })}
             </section>
 
-            <section
-              style={{
-                ...cardStyle,
-                gridColumn: '1 / -1',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Buzz Score</span>
-                <span style={{ fontSize: 20, fontWeight: 600, color: '#22c55e' }}>{buzzScoreValue.toFixed(0)}%</span>
-              </div>
-              <div style={{ width: '100%', height: 8, backgroundColor: '#e5e7eb', borderRadius: 9999 }}>
-                <div
-                  style={{
-                    width: `${buzzScoreValue}%`,
-                    height: '100%',
-                    backgroundColor: '#22c55e',
-                    borderRadius: 9999,
-                    transition: 'width 0.3s ease'
-                  }}
-                />
-              </div>
-            </section>
-
-            <section style={{ ...cardStyle, gridColumn: '1 / -1' }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: 16 }}>Recent Content</div>
-              {recentMedia.length > 0 ? (
+            {recentMedia.length > 0 && (
+              <section style={{ ...cardStyle, gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: 16 }}>Recent Content</div>
                 <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 10 }}>
                   {recentMedia.map(media => (
                     <img
@@ -1619,208 +1467,8 @@ export default function CreatorsPage() {
                     />
                   ))}
                 </div>
-              ) : (
-                <div style={{ fontSize: 12, color: '#6b7280' }}>No recent content available.</div>
-              )}
-            </section>
-            <section
-              style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                padding: '24px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 24,
-                gridColumn: '1 / -1'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 18, fontWeight: 600, color: '#111827' }}>Historical Metrics</span>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>
-                    {historyHasData ? 'Day-over-day change across key signals' : 'Historical data not available yet.'}
-                  </span>
-                </div>
-                <span style={{ fontSize: 12, color: '#6b7280' }}>
-                  {historyHasData && historyLastUpdated ? `Updated ${historyLastUpdated}` : ''}
-                </span>
-              </div>
-
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {historyHasData ? (
-                  <>
-                    <div style={{ position: 'relative', height: 240 }}>
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
-                        <div style={{ width: 52, position: 'relative' }}>
-                          {historyTicks.map(tick => (
-                            <span
-                              key={`tick-${tick.value}`}
-                              style={{
-                                position: 'absolute',
-                                left: 0,
-                                top: `calc(${Math.max(0, Math.min(100, tick.yPercent))}% - 8px)`,
-                                fontSize: 10,
-                                color: '#9ca3af'
-                              }}
-                            >
-                              {formatPercentChangeValue(tick.value)}
-                            </span>
-                          ))}
-                        </div>
-                        <div style={{ position: 'relative', flex: 1 }}>
-                          <svg
-                            viewBox="0 0 100 100"
-                            preserveAspectRatio="none"
-                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-                          >
-                            <defs>
-                              <linearGradient id={historyGradientId} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#eef2ff" stopOpacity="0.75" />
-                                <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-                              </linearGradient>
-                            </defs>
-                            <rect x="0" y="0" width="100" height="100" fill={`url(#${historyGradientId})`} />
-                            {historyTicks.map(tick => (
-                              <line
-                                key={`grid-${tick.value}`}
-                                x1={0}
-                                y1={Math.max(0, Math.min(100, tick.yPercent))}
-                                x2={100}
-                                y2={Math.max(0, Math.min(100, tick.yPercent))}
-                                stroke="#e5e7eb"
-                                strokeWidth={0.35}
-                              />
-                            ))}
-                            {zeroLine !== null && (
-                              <line
-                                x1={0}
-                                y1={Math.max(0, Math.min(100, zeroLine))}
-                                x2={100}
-                                y2={Math.max(0, Math.min(100, zeroLine))}
-                                stroke="#93c5fd"
-                                strokeWidth={0.6}
-                                strokeDasharray="4 4"
-                              />
-                            )}
-                            {historyPaths.map(series => (
-                              <path
-                                key={`path-${series.key}`}
-                                d={series.path}
-                                fill="none"
-                                stroke={series.color}
-                                strokeWidth={1.8}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeOpacity={0.95}
-                              />
-                            ))}
-                            {historyMarkers.map(marker => (
-                              <g key={`marker-${marker.key}`}>
-                                <circle
-                                  cx={marker.x}
-                                  cy={marker.y}
-                                  r={2}
-                                  fill="#ffffff"
-                                  stroke={marker.color}
-                                  strokeWidth={0.9}
-                                />
-                              </g>
-                            ))}
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: 16
-                      }}
-                    >
-                      {historySeries.map(series => {
-                        const dayChangeValue = series.latestRawChange ?? null
-                        const dayChangeMagnitude = dayChangeValue !== null ? Math.abs(dayChangeValue) : null
-                        const dayChangeSign = dayChangeValue !== null ? (dayChangeValue > 0 ? '+' : dayChangeValue < 0 ? '-' : '') : ''
-                        const dayChangeText =
-                          dayChangeValue === null || dayChangeValue === 0
-                            ? 'No change'
-                            : `${dayChangeSign}${series.changeFormatter(dayChangeMagnitude)}`
-                        const dayChangeColor =
-                          dayChangeValue === null || dayChangeValue === 0
-                            ? '#6b7280'
-                            : dayChangeValue > 0
-                            ? '#22c55e'
-                            : '#ef4444'
-                        const dayPercentText = formatPercentChangeValue(series.latestDayPercentChange)
-                        const totalPercentText = formatPercentChangeValue(series.latestPercentChange)
-
-                        return (
-                          <div
-                            key={`legend-${series.key}`}
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 6,
-                              padding: '12px 14px',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: 10
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span
-                                style={{
-                                  width: 8,
-                                  height: 8,
-                                  borderRadius: '50%',
-                                  backgroundColor: series.color,
-                                  boxShadow: `0 0 0 3px ${series.color}1a`
-                                }}
-                              />
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{series.label}</span>
-                            </div>
-                            <span style={{ fontSize: 20, fontWeight: 600, color: '#111827' }}>
-                              {series.valueFormatter(series.latestValue)}
-                            </span>
-                            <span style={{ fontSize: 11, color: dayChangeColor }}>
-                              {dayChangeText}
-                              {dayPercentText !== '—' && dayChangeValue !== null && dayChangeValue !== 0
-                                ? ` (${dayPercentText})`
-                                : ''}
-                            </span>
-                            {totalPercentText !== '—' ? (
-                              <span style={{ fontSize: 11, color: '#6b7280' }}>
-                                vs first snapshot {totalPercentText}
-                              </span>
-                            ) : null}
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 11,
-                        color: '#6b7280',
-                        paddingLeft: 52
-                      }}
-                    >
-                      {historyLabels.map(label => (
-                        <span key={label}>{label}</span>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>
-                    Historical data not available. Snapshots will appear here as soon as this creator receives a metrics
-                    update.
-                  </div>
-                )}
-              </div>
-            </section>
+              </section>
+            )}
           </div>
         </aside>
     )
@@ -1840,8 +1488,7 @@ export default function CreatorsPage() {
       'average_likes',
       'average_comments',
       'engagement_rate',
-      'location',
-      'updated_at'
+      'location'
     ]
     const lines = [header.join(',')]
     rows.forEach(r => {
@@ -1854,8 +1501,7 @@ export default function CreatorsPage() {
         likesValue ?? '',
         r.average_comments ?? '',
         r.engagement_rate ?? '',
-        r.location ?? '',
-        r.updated_at ?? ''
+        r.location ?? ''
       ]
         .map(v => `${v}`.replaceAll('"', '""'))
         .map(v => /[,\n\r]/.test(v) ? `"${v}"` : v)
@@ -1877,7 +1523,6 @@ export default function CreatorsPage() {
     setPage(1)
   }
 
-  const totalPayoutDisplay = '$0'
   const activeColumns = useMemo(
     () => schemaColumns.filter(c => visibleColumns[c.key]),
     [schemaColumns, visibleColumns]
@@ -1915,71 +1560,6 @@ export default function CreatorsPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setDateOpen(v => !v)}
-                style={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  fontSize: '14px',
-                  color: '#374151',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <span>Filter by date</span>
-                <ChevronDown size={16} />
-              </button>
-              {dateOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '110%',
-                    left: 0,
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 6,
-                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)',
-                    padding: 8,
-                    zIndex: 20,
-                    minWidth: 180
-                  }}
-                >
-                  {[
-                    { key: 'all', label: 'All time' },
-                    { key: '7d', label: 'Last 7 days' },
-                    { key: '30d', label: 'Last 30 days' },
-                    { key: '90d', label: 'Last 90 days' }
-                  ].map(opt => (
-                    <button
-                      key={opt.key}
-                      onClick={() => {
-                        setDateFilter(opt.key as DateFilter)
-                        setPage(1)
-                        setDateOpen(false)
-                      }}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: '8px 10px',
-                        fontSize: 14,
-                        color: '#111827',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
             <div style={{ position: 'relative' }}>
               <Search
                 size={16}
@@ -2079,9 +1659,6 @@ export default function CreatorsPage() {
               <Download size={16} />
               <span>Export Data</span>
             </button>
-            <div style={{ backgroundColor: '#f3f4f6', padding: '8px 12px', borderRadius: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Total Payout: {totalPayoutDisplay}</span>
-            </div>
           </div>
         </div>
 
@@ -2305,8 +1882,6 @@ export default function CreatorsPage() {
                         content = formatPercent(r.engagement_rate)
                       } else if (col.key === 'location') {
                         content = r.location || 'N/A'
-                      } else if (col.key === 'updated_at') {
-                        content = timeAgo(r.updated_at)
                       } else {
                         content = 'N/A'
                       }

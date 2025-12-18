@@ -8,7 +8,7 @@ import {
   Heart,
   MessageCircle
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Select Chip Component
 const SelectChip = ({
@@ -2276,16 +2276,14 @@ export default function TrackingPage() {
   const [topReelsLoading, setTopReelsLoading] = useState(true)
   const [topReelsSortBy, setTopReelsSortBy] = useState<'Plays' | 'Likes' | 'Comments' | 'Engagement Rate'>('Plays')
   const [topCreators, setTopCreators] = useState<Array<{
-    username: string
-    fullName: string | null
-    profilePicUrl: string | null
-    totalViews: number
-    totalLikes: number
-    totalComments: number
-    engagementRate: number
+    handle: string
+    display_name: string | null
+    profile_image_url: string | null
+    followers_count: number | null
   }>>([])
   const [topCreatorsLoading, setTopCreatorsLoading] = useState(true)
-  const [topCreatorsSortBy, setTopCreatorsSortBy] = useState<'Views' | 'Likes' | 'Comments' | 'Engagement Rate'>('Views')
+  const [userCreatorHandles, setUserCreatorHandles] = useState<string[]>([])
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null)
   const [latestReelMetrics, setLatestReelMetrics] = useState<Array<{
     reel_id: number;
     views: number;
@@ -3094,130 +3092,124 @@ export default function TrackingPage() {
     }
   }
 
-  // Fetch top creators aggregated by owner_username
-  const fetchTopCreators = async () => {
+  // Helper function to sanitize handles
+  const sanitizeHandle = (value: string | null | undefined): string => {
+    if (!value) return ''
+    return value.trim()
+  }
+
+  // Fetch top creators from healthwellness table sorted by followers, filtered by user's creator_handles
+  const fetchTopCreators = useCallback(async () => {
     try {
       setTopCreatorsLoading(true)
 
-      // Get all reels with metrics
-      const { data: metricsData, error: metricsError } = await supabase
-        .from('reel_metrics_latest')
-        .select('id, views, likes, comments')
-
-      if (metricsError) {
-        console.error('Error fetching metrics for creators:', metricsError)
-        setTopCreatorsLoading(false)
-        return
-      }
-
-      if (!metricsData || metricsData.length === 0) {
+      // If no creator handles, return empty array
+      if (!userCreatorHandles || userCreatorHandles.length === 0) {
         setTopCreators([])
         setTopCreatorsLoading(false)
         return
       }
 
-      const reelIds = metricsData.map(r => r.id)
+      // Sanitize handles
+      const sanitizedHandles = userCreatorHandles
+        .map(handle => sanitizeHandle(handle))
+        .filter((handle): handle is string => Boolean(handle))
 
-      // Fetch reel data with owner info, plays, and profile pic URL
-      const { data: reelsData, error: reelsError } = await supabase
-        .from('reels')
-        .select('id, owner_username, owner_full_name, plays, owner_profile_pic_url')
-        .in('id', reelIds)
-
-      if (reelsError) {
-        console.error('Error fetching reels for creators:', reelsError)
+      if (sanitizedHandles.length === 0) {
+        setTopCreators([])
         setTopCreatorsLoading(false)
         return
       }
 
-      // Create maps for efficient lookup
-      const playsMap = new Map<number, number>()
-      const ownerMap = new Map<number, { username: string | null; fullName: string | null; profilePicUrl: string | null }>()
-      
-      reelsData?.forEach(reel => {
-        const plays = typeof reel.plays === 'number' ? reel.plays : 0
-        playsMap.set(reel.id, plays)
-        ownerMap.set(reel.id, {
-          username: reel.owner_username,
-          fullName: reel.owner_full_name,
-          profilePicUrl: reel.owner_profile_pic_url || null
-        })
-      })
+      // Fetch creators from healthwellness table, filtered by handles, sorted by followers_count descending
+      const { data: creatorsData, error: creatorsError } = await supabase
+        .from('healthwellness')
+        .select('handle, display_name, profile_image_url, followers_count')
+        .in('handle', sanitizedHandles)
+        .not('followers_count', 'is', null)
+        .order('followers_count', { ascending: false })
+        .limit(5)
 
-      // Aggregate metrics by creator
-      const creatorMetrics = new Map<string, {
-        username: string
-        fullName: string | null
-        profilePicUrl: string | null
-        totalViews: number
-        totalLikes: number
-        totalComments: number
-      }>()
-
-      metricsData.forEach(metric => {
-        const owner = ownerMap.get(metric.id)
-        if (!owner || !owner.username) return
-
-        const plays = playsMap.get(metric.id) || 0
-        const views = plays > 0 ? plays : (typeof metric.views === 'number' ? metric.views : 0)
-        const likes = typeof metric.likes === 'number' ? metric.likes : 0
-        const comments = typeof metric.comments === 'number' ? metric.comments : 0
-
-        if (!creatorMetrics.has(owner.username)) {
-          creatorMetrics.set(owner.username, {
-            username: owner.username,
-            fullName: owner.fullName,
-            profilePicUrl: owner.profilePicUrl,
-            totalViews: 0,
-            totalLikes: 0,
-            totalComments: 0
-          })
-        }
-
-        const creator = creatorMetrics.get(owner.username)!
-        creator.totalViews += views
-        creator.totalLikes += likes
-        creator.totalComments += comments
-        // Update profile pic URL if this one exists and we don't have one yet
-        if (!creator.profilePicUrl && owner.profilePicUrl) {
-          creator.profilePicUrl = owner.profilePicUrl
-        }
-      })
-
-      // Convert to array and calculate engagement rates
-      let creatorsArray = Array.from(creatorMetrics.values()).map(creator => ({
-        ...creator,
-        engagementRate: creator.totalViews > 0
-          ? ((creator.totalLikes + creator.totalComments) / creator.totalViews) * 100
-          : 0
-      }))
-
-      // Sort by selected metric
-      switch (topCreatorsSortBy) {
-        case 'Views':
-          creatorsArray.sort((a, b) => b.totalViews - a.totalViews)
-          break
-        case 'Likes':
-          creatorsArray.sort((a, b) => b.totalLikes - a.totalLikes)
-          break
-        case 'Comments':
-          creatorsArray.sort((a, b) => b.totalComments - a.totalComments)
-          break
-        case 'Engagement Rate':
-          creatorsArray.sort((a, b) => b.engagementRate - a.engagementRate)
-          break
+      if (creatorsError) {
+        console.error('Error fetching top creators from healthwellness:', creatorsError)
+        setTopCreatorsLoading(false)
+        return
       }
 
-      // Take top 5 - profile pic URLs are already included from reels data
-      const top5Creators = creatorsArray.slice(0, 5)
+      if (!creatorsData || creatorsData.length === 0) {
+        setTopCreators([])
+        setTopCreatorsLoading(false)
+        return
+      }
 
-      setTopCreators(top5Creators)
+      // Map the data to match our state structure
+      const topCreatorsData = creatorsData.map(creator => ({
+        handle: creator.handle || '',
+        display_name: creator.display_name || null,
+        profile_image_url: creator.profile_image_url || null,
+        followers_count: creator.followers_count
+      }))
+
+      setTopCreators(topCreatorsData)
       setTopCreatorsLoading(false)
     } catch (error) {
       console.error('Unexpected error fetching top creators:', error)
       setTopCreatorsLoading(false)
     }
+  }, [userCreatorHandles])
+
+  // Fetch user's creator_handles from users table
+  const fetchUserCreatorHandles = async (username: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('creator_handles')
+        .eq('username', username)
+        .maybeSingle()
+
+      if (error) {
+        if ((error as { code?: string }).code === 'PGRST116') {
+          // No user found
+          setUserCreatorHandles([])
+        } else {
+          console.error('Error fetching user creator handles:', error)
+          setUserCreatorHandles([])
+        }
+        return
+      }
+
+      const handles = (data?.creator_handles || []) as string[]
+      setUserCreatorHandles(handles)
+    } catch (err) {
+      console.error('Unexpected error fetching user creator handles:', err)
+      setUserCreatorHandles([])
+    }
   }
+
+  // Fetch username from sessionStorage
+  useEffect(() => {
+    const sessionValue = sessionStorage.getItem('username')
+    const localValue = localStorage.getItem('username')
+
+    if (sessionValue) {
+      setCurrentUsername(sessionValue)
+      return
+    }
+
+    if (localValue) {
+      sessionStorage.setItem('username', localValue)
+      setCurrentUsername(localValue)
+    }
+  }, [])
+
+  // Fetch creator_handles when username changes
+  useEffect(() => {
+    if (!currentUsername) {
+      setUserCreatorHandles([])
+      return
+    }
+    fetchUserCreatorHandles(currentUsername)
+  }, [currentUsername])
 
   useEffect(() => {
     // Fetch data once on mount and whenever refresh key or sort options change
@@ -3226,7 +3218,7 @@ export default function TrackingPage() {
     fetchEngagementData()
     fetchTopReels()
     fetchTopCreators()
-  }, [refreshKey, topReelsSortBy, topCreatorsSortBy])
+  }, [refreshKey, topReelsSortBy, fetchTopCreators])
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1)
@@ -4594,66 +4586,30 @@ export default function TrackingPage() {
               }}
             >
               <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>Top Creators</span>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <SelectChip 
-                  label="Views" 
-                  active={topCreatorsSortBy === 'Views'}
-                  onClick={() => setTopCreatorsSortBy('Views')}
-                />
-                <SelectChip 
-                  label="Likes" 
-                  active={topCreatorsSortBy === 'Likes'}
-                  onClick={() => setTopCreatorsSortBy('Likes')}
-                />
-                <SelectChip 
-                  label="Comments" 
-                  active={topCreatorsSortBy === 'Comments'}
-                  onClick={() => setTopCreatorsSortBy('Comments')}
-                />
-                <SelectChip 
-                  label="Engagement Rate" 
-                  active={topCreatorsSortBy === 'Engagement Rate'}
-                  onClick={() => setTopCreatorsSortBy('Engagement Rate')}
-              />
             </div>
-          </div>
             <div>
               {topCreatorsLoading ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>
                   Loading top creators...
-        </div>
+                </div>
               ) : topCreators.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>
                   No creators found
                 </div>
               ) : (
                 topCreators.map((creator, index) => {
-                  const getDisplayValue = (): string => {
-                    switch (topCreatorsSortBy) {
-                      case 'Views':
-                        return formatNumber(creator.totalViews)
-                      case 'Likes':
-                        return formatNumber(creator.totalLikes)
-                      case 'Comments':
-                        return formatNumber(creator.totalComments)
-                      case 'Engagement Rate':
-                        return `${creator.engagementRate.toFixed(2)}%`
-                      default:
-                        return formatNumber(creator.totalViews)
-                    }
-                  }
-                  
-                  const username = creator.username
-                  const displayName = creator.fullName || username
+                  const followersCount = creator.followers_count ?? 0
+                  const handle = creator.handle
+                  const displayName = creator.display_name || handle
                   
                   return (
                     <CreatorRow
-                      key={creator.username}
-                      avatar={username}
-                      name={username}
+                      key={creator.handle}
+                      avatar={handle}
+                      name={handle}
                       subtitle={displayName}
-                      value={getDisplayValue()}
-                      profilePicUrl={creator.profilePicUrl}
+                      value={formatNumber(followersCount)}
+                      profilePicUrl={creator.profile_image_url}
                     />
                   )
                 })

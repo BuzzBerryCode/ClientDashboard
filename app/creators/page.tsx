@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import DashboardLayout from '@/app/components/DashboardLayout'
 import { supabase } from '@/lib/supabase'
 import type { LucideIcon } from 'lucide-react'

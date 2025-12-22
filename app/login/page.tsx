@@ -345,10 +345,10 @@ export default function LoginPage() {
                 color: '#6b7280'
               }}
             >
-              Forgot your credentials?{' '}
+              Forgot your credentials? {' '}
             </span>
             <a
-              href="#contact"
+              href="mailto:info@haveninfluence.com"
               style={{
                 display: 'inline',
                 fontSize: '14px',

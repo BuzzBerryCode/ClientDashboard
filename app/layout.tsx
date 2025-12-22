@@ -10,6 +10,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Haven Influence - Login",
   description: "Login to Haven Influence Client Dashboard",
+  icons: {
+    icon: "/Logo.svg",
+  },
 };
 
 export default function RootLayout({

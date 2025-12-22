@@ -15,14 +15,12 @@ import {
     ExternalLink,
     Eye,
     Heart,
-    Info,
     Instagram,
     LayoutPanelLeft,
     MapPin,
     MessageSquare,
     Music2,
     Search,
-    Settings,
     Users,
     X
 } from 'lucide-react'
@@ -1588,10 +1586,6 @@ export default function CreatorsPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Settings size={18} color="#6b7280" />
-              <Info size={18} color="#6b7280" />
-            </div>
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setColumnsOpen(v => !v)}

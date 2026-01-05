@@ -3123,14 +3123,11 @@ export default function TrackingPage() {
         return
       }
 
-      // Fetch creators from healthwellness table, filtered by handles, sorted by followers_count descending
+      // Fetch creators from healthwellness table for basic info
       const { data: creatorsData, error: creatorsError } = await supabase
         .from('healthwellness')
-        .select('handle, display_name, profile_image_url, followers_count')
+        .select('handle, display_name, profile_image_url')
         .in('handle', sanitizedHandles)
-        .not('followers_count', 'is', null)
-        .order('followers_count', { ascending: false })
-        .limit(5)
 
       if (creatorsError) {
         console.error('Error fetching top creators from healthwellness:', creatorsError)
@@ -3144,13 +3141,46 @@ export default function TrackingPage() {
         return
       }
 
-      // Map the data to match our state structure
-      const topCreatorsData = creatorsData.map(creator => ({
-        handle: creator.handle || '',
-        display_name: creator.display_name || null,
-        profile_image_url: creator.profile_image_url || null,
-        followers_count: creator.followers_count
-      }))
+      // Fetch latest owner_followers from reels table for each creator
+      const { data: reelsData, error: reelsError } = await supabase
+        .from('reels')
+        .select('owner_username, owner_followers, created_at')
+        .in('owner_username', sanitizedHandles)
+        .not('owner_followers', 'is', null)
+        .order('created_at', { ascending: false })
+
+      if (reelsError) {
+        console.error('Error fetching owner_followers from reels:', reelsError)
+        setTopCreatorsLoading(false)
+        return
+      }
+
+      // Create a map of owner_username to latest owner_followers
+      const followersMap = new Map<string, number>()
+      if (reelsData) {
+        reelsData.forEach(reel => {
+          if (reel.owner_username && reel.owner_followers !== null && reel.owner_followers !== undefined) {
+            const username = reel.owner_username
+            const followers = typeof reel.owner_followers === 'number' ? reel.owner_followers : 0
+            // Only keep the latest (first) value for each owner since we ordered by created_at desc
+            if (!followersMap.has(username)) {
+              followersMap.set(username, followers)
+            }
+          }
+        })
+      }
+
+      // Map the data and include owner_followers from reels table
+      const topCreatorsData = creatorsData
+        .map(creator => ({
+          handle: creator.handle || '',
+          display_name: creator.display_name || null,
+          profile_image_url: creator.profile_image_url || null,
+          followers_count: followersMap.get(creator.handle || '') || null
+        }))
+        .filter(creator => creator.followers_count !== null) // Only include creators with follower data
+        .sort((a, b) => (b.followers_count || 0) - (a.followers_count || 0)) // Sort by followers_count descending
+        .slice(0, 5) // Limit to top 5
 
       setTopCreators(topCreatorsData)
       setTopCreatorsLoading(false)

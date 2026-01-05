@@ -735,6 +735,46 @@ export default function CreatorsPage() {
 
       const { data, error, count } = await query.range(fromTo.from, fromTo.to)
       if (error) throw error
+
+      // Fetch latest owner_followers from reels table for each creator
+      if (data && data.length > 0) {
+        const handles = data.map(row => row.handle).filter(Boolean) as string[]
+        
+        if (handles.length > 0) {
+          const { data: reelsData, error: reelsError } = await supabase
+            .from('reels')
+            .select('owner_username, owner_followers, created_at')
+            .in('owner_username', handles)
+            .not('owner_followers', 'is', null)
+            .order('created_at', { ascending: false })
+
+          if (!reelsError && reelsData) {
+            // Create a map of owner_username to latest owner_followers
+            const followersMap = new Map<string, number>()
+            reelsData.forEach(reel => {
+              if (reel.owner_username && reel.owner_followers !== null && reel.owner_followers !== undefined) {
+                const username = reel.owner_username
+                const followers = typeof reel.owner_followers === 'number' ? reel.owner_followers : 0
+                // Only keep the latest (first) value for each owner since we ordered by created_at desc
+                if (!followersMap.has(username)) {
+                  followersMap.set(username, followers)
+                }
+              }
+            })
+
+            // Update followers_count with owner_followers from reels table
+            const updatedData = data.map((row: any) => ({
+              ...row,
+              followers_count: followersMap.get(row.handle) ?? row.followers_count
+            }))
+
+            setRows(((updatedData as unknown) as HealthWellnessRow[]) || [])
+            setTotal(count || 0)
+            return
+          }
+        }
+      }
+
       setRows(((data as unknown) as HealthWellnessRow[]) || [])
       setTotal(count || 0)
     } catch (error: unknown) {

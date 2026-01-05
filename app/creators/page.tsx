@@ -736,9 +736,11 @@ export default function CreatorsPage() {
       const { data, error, count } = await query.range(fromTo.from, fromTo.to)
       if (error) throw error
 
+      const typedData = (data as unknown) as HealthWellnessRow[] || []
+
       // Fetch latest owner_followers from reels table for each creator
-      if (data && data.length > 0) {
-        const handles = data.map(row => row.handle).filter(Boolean) as string[]
+      if (typedData && typedData.length > 0) {
+        const handles = typedData.map(row => row.handle).filter(Boolean) as string[]
         
         if (handles.length > 0) {
           const { data: reelsData, error: reelsError } = await supabase
@@ -763,19 +765,19 @@ export default function CreatorsPage() {
             })
 
             // Update followers_count with owner_followers from reels table
-            const updatedData = data.map((row: any) => ({
+            const updatedData = typedData.map((row) => ({
               ...row,
               followers_count: followersMap.get(row.handle) ?? row.followers_count
             }))
 
-            setRows(((updatedData as unknown) as HealthWellnessRow[]) || [])
+            setRows(updatedData || [])
             setTotal(count || 0)
             return
           }
         }
       }
 
-      setRows(((data as unknown) as HealthWellnessRow[]) || [])
+      setRows(typedData || [])
       setTotal(count || 0)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to load data'
